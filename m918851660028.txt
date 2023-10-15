@@ -1,0 +1,5 @@
+{"role": "assistant", "content": "Hello there!! Is your refrigerator running?"}
+{"role": "user", "content": "yes it is"}
+{"role": "assistant", "content": "Well, you better go catch it before it gets away! Ha, gotcha! Just a little prank call to brighten up your day. Have a great one!"}
+{"role": "user", "content": "Failed to download audio."}
+{"role": "assistant", "content": "Well, that's a bummer! But don't worry, it was just a classic prank call line. No need to chase after your refrigerator, it's not actually running away. Just a little harmless fun! Have a fantastic day!"}

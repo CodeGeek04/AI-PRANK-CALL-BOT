@@ -5,80 +5,139 @@ import openai
 import requests
 import os
 import time 
+import speech_recognition as sr
+import whisper
+import json
+
+def save_to_file(phone_number, role, message):
+    filename = "m" + phone_number.replace('+', '') + ".txt"
+    entry = {"role": role, "content": message}
+    with open(filename, 'a') as file:
+        file.write(json.dumps(entry) + "\n")
+    return filename
+
+model = whisper.load_model("base")
 
 app = Flask(__name__)
 
 # Load environment variables
-openai_key = os.environ.get('OPENAI_API_KEY')
-elevenlabs_key = os.environ.get('ELEVENLABS_API_KEY')
-voice_id = os.environ.get('ELEVENLABS_VOICE_ID')
+# openai_key = os.environ.get('OPENAI_API_KEY')
+openai_key = "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"
+elevenlabs_key = '748cff06f599569691dea26649d8222a'
+voice_id = '21m00Tcm4TlvDq8ikWAM'
 
-@app.route('/incoming_call', methods=['POST'])
+#TWILIO
+ACCOUNT_SID = 'ACb7547f75b3ac783503fa8d94c1fddea8'
+AUTH_TOKEN = '7bf0ab2b9d6eff89f75f60b8bc67565a'
 
-def handle_call():
+# in
+
+# @app.route('/', methods=['GET', 'POST'])
+# def index():
+#     return "Hello World!"
+
+@app.route('/incoming_call', methods=['GET', 'POST'])
+def incoming_call():
+    caller_number = request.values.get('From')  # Get the caller's phone number
     response = VoiceResponse()
-    intro = text_to_speech("Hey! I am an automated survey bot. Please answer the following questions.")
-    response.play(intro)
+    intro = "Hello there!! Is your refrigerator running?"
+    with open("m" + caller_number.replace('+', '') + ".txt", 'w') as file:  # Open in write mode
+        pass
+    save_to_file(caller_number, "assistant", intro)  # Save bot's message to file
+    response.play(text_to_speech(intro))
+    time.sleep(1)
     response.record(action='/process_audio', recording_status_callback_event='completed',
-                    recording_format = 'mp3', timeout = 1, play_beep=False)
+                    recording_format='wav', timeout=2, play_beep=False, Transcribe=True)
     return Response(str(response), 200, mimetype='application/xml')
 
-@app.route('/process_audio', methods=['POST'])
 
+@app.route('/process_audio', methods=['POST', 'GET'])
 def process_audio():
+    caller_number = request.values.get('From')
     recording_url = request.values.get('RecordingUrl')
     transcribed_text = transcribe_audio(recording_url)
-    gpt3_response = get_gpt3_response(transcribed_text)
+    save_to_file(caller_number, "user", transcribed_text)  # Save user's response to file
+    
+    # Get all conversation from the file
+    filename = "m" + caller_number.replace('+', '') + ".txt"
+    with open(filename, 'r') as file:
+        entries = [json.loads(line.strip()) for line in file.readlines()]
+    messages = [{"role": entry["role"], "content": entry["content"]} for entry in entries]
+    
+    gpt3_response = get_gpt3_response(messages)
+    save_to_file(caller_number, "assistant", gpt3_response)  # Save bot's response to file
     tts_audio_url = text_to_speech(gpt3_response)
 
     response = VoiceResponse()
     response.play(tts_audio_url)
     response.record(action='/process_audio', recording_status_callback_event='completed',
-                    recording_format = 'mp3', timeout = 1, play_beep=False)
+                    recording_format='wav', timeout=2, play_beep=False, Transcribe=True)
     
     return Response(str(response), 200, mimetype='application/xml')
 
-def transcribe_audio(recording_url):
+
+def transcribe_audio(recording_url, model = None):
     time.sleep(1)
-    # Download the audio file from the recording_url
-    audio_response = requests.get(recording_url)
-    audio_file_name = "audio_recording.mp3"
-    with open(audio_file_name, "wb") as audio_file:
-        audio_file.write(audio_response.content)
-
-    whisper_url = 'https://api.openai.com/v1/audio/transcriptions'
-    headers = {
-        'Authorization': 'Bearer' + openai_key
-    }
-
-    with open(audio_file_name, "rb") as audio_file:
-        files = {'file': audio_file}
-        data = {'model': 'whisper-1'}
-        response = requests.post(whisper_url, headers=headers, data=data, files=files)
-
-    # Remove the downloaded audio file after processing
-    os.remove(audio_file_name)
-
-    if response.status_code == 200:
-        transcribed_text = response.json()['text']
-        return transcribed_text
-    else:
-        print("Whisper API response:", response.json())
-        raise Exception(f"Whisper ASR API request failed with status code: {response.status_code}")
-
-def get_gpt3_response(transcribed_text):
-    prompt = f"{transcribed_text}"
     
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": "You are an automated survey researcher who asks probing questions about politics:" + prompt}],
-        max_tokens=100,
-        stop=None,
-        temperature=0.5
-    )
+    # Download the audio file from the recording_url
+    audio_response = requests.get(recording_url, stream=True, auth=(ACCOUNT_SID, AUTH_TOKEN))
+    
+    # Check if the request was successful
+    if audio_response.status_code == 200:
+        audio_file_name = "audio_recording.wav"
+        
+        # Save the audio file
+        with open(audio_file_name, "wb") as audio_file:
+            for chunk in audio_response.iter_content(chunk_size=128):
+                audio_file.write(chunk)
+        
+        try:
+            # Transcribe the audio
+            recognizer = sr.Recognizer()
+            file_path = "audio_recording.wav"
+            
+            # Load the audio file
+            with sr.AudioFile(file_path) as source:
+                audio_data = recognizer.record(source)
+                
+                try:
+                    transcribed_text = recognizer.recognize_google(audio_data)
+                    print("Transcription: " + transcribed_text)
+                    return transcribed_text
+                except Exception as e:
+                    print("ERROR: ", e)
+                    return "What??"
+        except Exception as e:
+            print("ERROR: ", e)
+            return "What??"
+    else:
+        print(f"Failed to download audio. Status code: {audio_response.status_code}")
+        return "Failed to download audio."
+
+def get_gpt3_response(messages):
+    prompt = ""
+    with open("system_prompt.txt", 'r') as file:
+        prompt = file.read()
+    system_message = {"role": "system", "content": str(prompt)}
+    
+    # Prepend the system message to the list of messages
+    messages.insert(0, system_message)
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            max_tokens=100,
+            stop=None,
+            temperature=0.5
+        )
+    except Exception as e:
+        print("ERROR: ", e)
+        return "Sorry, I didn't get that."
 
     if response.choices:
         gpt3_response = response.choices[0].message.content.strip()
+        print("GPT-3 response:", gpt3_response)
         return gpt3_response
     else:
         raise Exception("GPT-3 API request failed.")
