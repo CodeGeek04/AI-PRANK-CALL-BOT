@@ -22,13 +22,13 @@ app = Flask(__name__)
 
 # Load environment variables
 # openai_key = os.environ.get('OPENAI_API_KEY')
-openai_key = "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"
-elevenlabs_key = '748cff06f599569691dea26649d8222a'
+openai_key = "YOUR_OPENAI_API_KEY"
+elevenlabs_key = 'YOUR_ELEVENLABS_API_KEY'
 voice_id = '21m00Tcm4TlvDq8ikWAM'
 
 #TWILIO
-ACCOUNT_SID = 'ACb7547f75b3ac783503fa8d94c1fddea8'
-AUTH_TOKEN = '7bf0ab2b9d6eff89f75f60b8bc67565a'
+ACCOUNT_SID = 'YOUR_TWILIO_ACCOUNT_SID'
+AUTH_TOKEN = 'YOUR_TWILIO_AUTH_TOKEN'
 
 # in
 
