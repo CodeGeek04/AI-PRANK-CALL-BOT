@@ -1,6 +1,6 @@
-# Survey Bot
+# PRANK CALL BOT
 
-A Flask-based application that acts as an automated survey bot for probing questions about politics. The application leverages Twilio's Voice API to receive and process incoming calls, OpenAI's Whisper ASR API to transcribe speech, GPT-3.5 Turbo to generate responses, and Eleven Labs' TTS API to convert text to speech.
+A Flask-based application that acts as an automated prank bot. The application leverages Twilio's Voice API to receive and process incoming calls, OpenAI's Whisper ASR API to transcribe speech, GPT-3.5 Turbo to generate responses, and Eleven Labs' TTS API to convert text to speech.
 
 ## Prerequisites
 
@@ -13,10 +13,6 @@ A Flask-based application that acts as an automated survey bot for probing quest
 7. An Eleven Labs API key
 
 ## Installation
-
-Clone the repository:
-git clone https://github.com/yrvelez/ivr_bot.git
-
 Install the required dependencies:
 pip install -r requirements.txt
 
